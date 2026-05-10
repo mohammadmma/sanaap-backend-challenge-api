@@ -3,6 +3,7 @@ from django.contrib.auth.models import Group
 from django.utils import timezone
 from django.contrib import messages
 from apps.authentication.models import AdminRequestModel
+from django.db import transaction
 
 
 @admin.action(description='Approve selected requests')
@@ -21,15 +22,16 @@ def approve_requests(modeladmin, request, queryset):    # TODO: remember to noti
         if admin_request.status != AdminRequestModel.Status.PENDING:
             continue
 
-        user = admin_request.user
-        user.groups.remove(viewer_group)
-        user.groups.add(admin_group)
+        with transaction.atomic():
+            user = admin_request.user
+            user.groups.remove(viewer_group)
+            user.groups.add(admin_group)
 
-        admin_request.status      = AdminRequestModel.Status.APPROVED
-        admin_request.reviewed_at = timezone.now()
-        admin_request.save()
+            admin_request.status      = AdminRequestModel.Status.APPROVED
+            admin_request.reviewed_at = timezone.now()
+            admin_request.save()
 
-        approved_count += 1
+            approved_count += 1
 
     modeladmin.message_user(
         request,
@@ -38,7 +40,7 @@ def approve_requests(modeladmin, request, queryset):    # TODO: remember to noti
     )
 
 @admin.action(description='Reject selected requests')
-def reject_requests(modeladmin, request, queryset):
+def reject_requests(modeladmin, request, queryset):     # TODO: remember to notify user after rejection
     """
     Custom action — rejects selected pending requests.
     User stays as viewer.
@@ -50,11 +52,12 @@ def reject_requests(modeladmin, request, queryset):
         if admin_request.status != AdminRequestModel.Status.PENDING:
             continue
 
-        admin_request.status      = AdminRequestModel.Status.REJECTED
-        admin_request.reviewed_at = timezone.now()
-        admin_request.save()
+        with transaction.atomic():
+            admin_request.status      = AdminRequestModel.Status.REJECTED
+            admin_request.reviewed_at = timezone.now()
+            admin_request.save()
 
-        rejected_count += 1
+            rejected_count += 1
 
     modeladmin.message_user(
         request,

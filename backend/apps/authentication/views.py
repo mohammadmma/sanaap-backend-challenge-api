@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from django.contrib.auth.models import Group
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from apps.authentication.permissions import IsAdmin, IsEditor, IsViewer
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from apps.authentication.serializers import RegisterValidator
@@ -36,6 +37,35 @@ class AdminDemadView(APIView):
                     },
                     status=status.HTTP_201_CREATED
                 )
+            
+class PromoteViewerToEditorView(APIView):
+    permission_classes = [IsAdmin]
+
+    def post(self, request, user_id):
+        try:
+            target_user = User.objects.prefetch_related("groups").get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=404)
+        
+        current_role = target_user.groups.values_list('name', flat=True).first()
+
+        if current_role != 'viewer':
+            return Response(
+                {'error': f'Cannot promote. User is currently "{current_role}", not "viewer".'},
+                status=400
+            )
+
+        with transaction.atomic():
+            viewer_group = Group.objects.get(name='viewer')
+            editor_group, _ = Group.objects.get_or_create(name='editor')
+
+            target_user.groups.remove(viewer_group)
+            target_user.groups.add(editor_group)
+
+            return Response({
+                'message': f'{target_user.username} has been promoted to editor.'
+            }, status=status.HTTP_200_OK)
+
 
 class ViewerRegisterView(APIView):
     permission_classes = [AllowAny]
