@@ -35,7 +35,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
 
-    'apps.auth.apps.AuthConfig',
+    'apps.authentication.apps.AuthenticationConfig',
     'apps.document.apps.DocumentConfig'
 ]
 
@@ -101,7 +101,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
+SESSION_COOKIE_AGE = 60 * 60 * 24
 
 LANGUAGE_CODE = 'en-us'
 

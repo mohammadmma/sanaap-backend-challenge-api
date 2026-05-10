@@ -25,14 +25,16 @@ services:
     container_name: sanaap_backend
     env_file: .env
     environment:
+      - DOCKER_CONTAINER=True
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     ports:
-      - "8000:8000"
-    command: bash -c "python manage.py runserver"
+      - "8080:8000"
+    command: bash -c "python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./backend:/usr/src/web
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 
 volumes:
