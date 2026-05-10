@@ -1,1 +1,15 @@
-.venv
+# ---> Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.venv/
+.vscode/
+
+
+# Environment
+.env
+
+# API docs
+sanaap-api-docs/
