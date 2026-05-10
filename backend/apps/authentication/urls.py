@@ -1,5 +1,16 @@
 from django.urls import path, include
-from apps.authentication.views import ViewerRegisterView, LoginView, LogoutView, MeView, AdminDemadView, PromoteViewerToEditorView
+from rest_framework.routers import DefaultRouter
+from apps.authentication.views import (
+    ViewerRegisterView,
+    LoginView,
+    LogoutView,
+    MeView,
+    AdminDemadView,
+    UserCRUDModelViewSet,
+    )
+
+api_router = DefaultRouter()
+api_router.register(r"user-crud", UserCRUDModelViewSet, basename="user_crud")
 
 
 urlpatterns = [
@@ -7,6 +18,7 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name="logout"),
     path('register/', ViewerRegisterView.as_view(), name="register"),
     path('admin-demand/', AdminDemadView.as_view(), name="admin_demand"),
-    path('promote-viewer/<int:user_id>/', PromoteViewerToEditorView.as_view(), name="promote_viewer"),
     path('me/', MeView.as_view(), name="me"),
+
+    path("", include(api_router.urls)),
 ]

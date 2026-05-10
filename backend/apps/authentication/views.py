@@ -1,14 +1,16 @@
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 from django.contrib.auth.models import Group
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from apps.authentication.permissions import IsAdmin, IsEditor, IsViewer
-from rest_framework import status
+from rest_framework import status, serializers
 from django.contrib.auth import get_user_model
-from apps.authentication.serializers import RegisterValidator
+from apps.authentication.serializers import RegisterValidator, UserReadSerializer, UserWriteSerializer
 from apps.authentication.models import AdminRequestModel
 from django.db import transaction
+from apps.authentication.services import UserService
 
 
 User = get_user_model()
@@ -38,34 +40,32 @@ class AdminDemadView(APIView):
                     status=status.HTTP_201_CREATED
                 )
             
-class PromoteViewerToEditorView(APIView):
+class UserCRUDModelViewSet(ModelViewSet):   # TODO: can delete superuser! can delete another admin! must be restricted or need approval
     permission_classes = [IsAdmin]
+    queryset = User.objects.prefetch_related('groups').all()
 
-    def post(self, request, user_id):
+    def get_serializer_class(self):
+        """Read actions use ReadSerializer, write actions use WriteSerializer."""
+        if self.action in ('list', 'retrieve'):
+            return UserReadSerializer
+        return UserWriteSerializer
+
+    def perform_create(self, serializer):
+        UserService.create_user(serializer.validated_data.copy())
+
+    def perform_update(self, serializer):
+        UserService.update_user(serializer.instance, serializer.validated_data.copy())
+
+    def destroy(self, request, *args, **kwargs):
+        target_user = self.get_object()
         try:
-            target_user = User.objects.prefetch_related("groups").get(id=user_id)
-        except User.DoesNotExist:
-            return Response({'error': 'User not found.'}, status=404)
-        
-        current_role = target_user.groups.values_list('name', flat=True).first()
-
-        if current_role != 'viewer':
-            return Response(
-                {'error': f'Cannot promote. User is currently "{current_role}", not "viewer".'},
-                status=400
-            )
-
-        with transaction.atomic():
-            viewer_group = Group.objects.get(name='viewer')
-            editor_group, _ = Group.objects.get_or_create(name='editor')
-
-            target_user.groups.remove(viewer_group)
-            target_user.groups.add(editor_group)
-
-            return Response({
-                'message': f'{target_user.username} has been promoted to editor.'
-            }, status=status.HTTP_200_OK)
-
+            UserService.delete_user(request.user, target_user)
+        except ValueError as e:
+            raise serializers.ValidationError({'error': str(e)})
+        return Response(
+            {'message': f'User ({target_user.username}) deleted successfully.'},
+            status=status.HTTP_204_NO_CONTENT
+        )
 
 class ViewerRegisterView(APIView):
     permission_classes = [AllowAny]
