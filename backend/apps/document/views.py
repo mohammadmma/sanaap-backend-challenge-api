@@ -1,15 +1,32 @@
 from rest_framework import viewsets, parsers, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 from django.db import transaction
 from apps.authentication.permissions import IsAdmin, IsEditor, IsViewer
+from apps.document.filters import DocumentFilter
+from apps.document.pagination import StandardResultsSetPagination
 from .models import Document
 from .serializers import DocumentSerializer
 
 
 class DocumentViewSet(viewsets.ModelViewSet):
-    queryset = Document.objects.all().order_by('-created_at')
+    queryset = Document.objects.select_related('uploaded_by').all().order_by('-created_at')
     serializer_class = DocumentSerializer
+
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+
+    filterset_class = DocumentFilter
+
+    # Full-text style search
+    search_fields = ['title', 'description']
+
+    # Controlled ordering
+    ordering_fields = ['created_at', 'title']
+    ordering = ['-created_at']
+
+    pagination_class = StandardResultsSetPagination
 
     def get_permissions(self):
         if self.action in ['destroy', 'clear_file', 'clear_image']:
