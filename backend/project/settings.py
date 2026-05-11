@@ -85,6 +85,19 @@ DATABASES = {
 }
 
 
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": env('DEFAULT_REDIS_URL'),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+        'KEY_PREFIX': 'docs',
+    }
+}
+DOCUMENT_CACHE_TTL = env.int('DOCUMENT_CACHE_TTL')
+
+
 
 STORAGES = {
     "default": {
@@ -95,20 +108,20 @@ STORAGES = {
     },
 }
 
-# MinIO credentials — django-storages reads these automatically
+
 AWS_ACCESS_KEY_ID = env('MINIO_ACCESS_KEY')
 AWS_SECRET_ACCESS_KEY = env('MINIO_SECRET_KEY')
 AWS_STORAGE_BUCKET_NAME = env('MINIO_BUCKET_NAME')
 AWS_S3_ENDPOINT_URL = env('MINIO_ENDPOINT')
-MINIO_PUBLIC_ENDPOINT_URL = env('MINIO_PUBLIC_ENDPOINT_URL')   # Browser → MinIO (outside Docker)
-AWS_S3_REGION_NAME = 'us-east-1'   # MinIO ignores this, but boto3 requires it
+MINIO_PUBLIC_ENDPOINT_URL = env('MINIO_PUBLIC_ENDPOINT_URL')
+AWS_S3_REGION_NAME = 'us-east-1'
 
-# --- Important behaviour settings ---
-AWS_DEFAULT_ACL = None    # don't make files public automatically
-AWS_QUERYSTRING_AUTH = True    # use presigned URLs (with expiry)
-AWS_QUERYSTRING_EXPIRE = 3600   # presigned URLs expire after 1 hour
-AWS_S3_FILE_OVERWRITE = False   # if two files have the same name, keep both
-AWS_S3_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10 MB buffer before spooling to disk
+
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = True
+AWS_QUERYSTRING_EXPIRE = 60 * 60
+AWS_S3_FILE_OVERWRITE = False
+AWS_S3_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 
 AUTH_PASSWORD_VALIDATORS = [

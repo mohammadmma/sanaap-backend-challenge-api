@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.core.cache import cache
 from rest_framework import viewsets, parsers, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -19,10 +21,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
     filterset_class = DocumentFilter
 
-    # Full-text style search
     search_fields = ['title', 'description']
 
-    # Controlled ordering
     ordering_fields = ['created_at', 'title']
     ordering = ['-created_at']
 
@@ -35,27 +35,91 @@ class DocumentViewSet(viewsets.ModelViewSet):
             return [IsEditor()]
         return [IsViewer()]
 
-    # IMPORTANT: include MultiPartParser so the view accepts file uploads
-    # Without this, file uploads will be silently ignored
+    
     parser_classes = [
-        parsers.MultiPartParser,   # for file uploads via form-data
-        parsers.FormParser,        # for form fields alongside files
-        parsers.JSONParser,        # for JSON-only requests (no files)
+        parsers.MultiPartParser,   
+        parsers.FormParser,        
+        parsers.JSONParser,        
     ]
 
+
+    def _get_detail_cache_key(self, pk):
+        return f"document_detail_{pk}"
+
+    def _get_list_cache_pattern(self):
+        
+        return "document_list_*"
+
+    def _invalidate_document_cache(self, pk=None):
+        """Clears detail cache for a specific PK and sweeps all list caches."""
+        keys_to_delete = []
+        if pk:
+            keys_to_delete.append(self._get_detail_cache_key(pk))
+        
+        
+        list_keys = cache.keys(self._get_list_cache_pattern())
+        if list_keys:
+            keys_to_delete.extend(list_keys)
+            
+        if keys_to_delete:
+            cache.delete_many(keys_to_delete)
+
+
+
+    def retrieve(self, request, *args, **kwargs):
+        """Cache the detail view of a document."""
+        pk = kwargs.get('pk')
+        cache_key = self._get_detail_cache_key(pk)
+        cached_data = cache.get(cache_key)
+
+        if cached_data is not None:
+            return Response(cached_data)
+
+
+        response = super().retrieve(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=getattr(settings, 'DOCUMENT_CACHE_TTL', 2700))
+        return response
+
+    def list(self, request, *args, **kwargs):
+        """Cache the list view, accounting for query params (filters/pages)."""
+
+        query_string = request.META.get('QUERY_STRING', '')
+        cache_key = f"document_list_{query_string}"
+        cached_data = cache.get(cache_key)
+
+        if cached_data is not None:
+            return Response(cached_data)
+
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=getattr(settings, 'DOCUMENT_CACHE_TTL', 2700))
+        return response
+
+
+
     def perform_create(self, serializer):
-        # Automatically set uploaded_by to the current user
         serializer.save(uploaded_by=self.request.user)
+        self._invalidate_document_cache()
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        self._invalidate_document_cache(instance.pk)
+
+    def perform_destroy(self, instance):
+        pk = instance.pk
+        instance.delete()
+        self._invalidate_document_cache(pk)
 
     @action(detail=True, methods=['post'], url_path='clear_file')
     def clear_file(self, request, pk=None):
         obj = self.get_object()
-
         if obj.file:
             with transaction.atomic():
                 obj.file = None
                 obj.save()
-                return Response({"detail": "File deleted."}, status=status.HTTP_204_NO_CONTENT)
+            
+
+            self._invalidate_document_cache(pk)
+            return Response({"detail": "File deleted."}, status=status.HTTP_204_NO_CONTENT)
         return Response({"detail": "No file found."}, status=400)
     
     @action(detail=True, methods=['post'], url_path='clear_image')
@@ -65,5 +129,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 obj.image = None
                 obj.save()
-                return Response({"detail": "Image deleted."})
+            
+
+            self._invalidate_document_cache(pk)
+            return Response({"detail": "Image deleted."})
         return Response({"detail": "No image found."}, status=400)

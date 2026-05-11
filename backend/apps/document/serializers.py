@@ -1,11 +1,9 @@
-# documents/serializers.py
 from rest_framework import serializers
 from .models import Document
 from apps.authentication.permissions import get_user_role
 
 
 class DocumentSerializer(serializers.ModelSerializer):
-    # These are computed fields — they call the model methods
     file_url  = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
     uploaded_by_username = serializers.CharField(
@@ -19,10 +17,10 @@ class DocumentSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'description',
-            'file',         # write-only (upload)
-            'image',        # write-only (upload)
-            'file_url',     # read-only (presigned URL for download)
-            'image_url',    # read-only (presigned URL for download)
+            'file',
+            'image',
+            'file_url',
+            'image_url',
             'uploaded_by',
             'uploaded_by_username',
             'created_at',

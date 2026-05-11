@@ -1,4 +1,3 @@
-# documents/storage.py
 from storages.backends.s3boto3 import S3Boto3Storage
 from django.conf import settings
 
@@ -11,11 +10,11 @@ class MinIOStorage(S3Boto3Storage):
     """
 
     def url(self, name, expire=None):
-        # Get the URL that django-storages generates (uses minio:9000)
+        
         original_url = super().url(name, expire)
 
-        # Replace the internal Docker hostname with the public one
-        internal = settings.AWS_S3_ENDPOINT_URL          # http://minio:9000
-        public   = settings.MINIO_PUBLIC_ENDPOINT_URL    # http://localhost:9000
+        
+        internal = settings.AWS_S3_ENDPOINT_URL
+        public = settings.MINIO_PUBLIC_ENDPOINT_URL 
 
         return original_url.replace(internal, public)

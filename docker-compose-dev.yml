@@ -18,6 +18,19 @@ services:
       start_period: 15s
 
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+
   web:
     build: 
       context: .
@@ -36,6 +49,8 @@ services:
       db:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   minio:
@@ -73,3 +88,4 @@ services:
 volumes:
   minio_data:
   sanaap_db_volume:
+  redis_data:
