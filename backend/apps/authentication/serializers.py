@@ -1,10 +1,23 @@
 from rest_framework import serializers
-from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
+from drf_spectacular.utils import extend_schema_serializer
+from drf_spectacular.utils import OpenApiResponse, OpenApiExample
 
 User = get_user_model()
 
 
+@extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            "Valid Registration",
+            value={
+                "username": "john_doe",
+                "password": "strongpassword123",
+                "password_confirmation": "strongpassword123"
+            }
+        )
+    ]
+)
 class RegisterValidator(serializers.Serializer):
     username = serializers.CharField(required=True)
     password = serializers.CharField(required=True, write_only=True, min_length=8)
@@ -25,6 +38,20 @@ class RegisterValidator(serializers.Serializer):
         return attrs
     
 
+@extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            "User Response",
+            value={
+                "id": 1,
+                "username": "john_doe",
+                "email": "john@example.com",
+                "role": "viewer",
+                "is_active": True
+            }
+        )
+    ]
+)
 class UserReadSerializer(serializers.ModelSerializer):
     """Only for output. Shows role as a plain string."""
     role = serializers.SerializerMethodField()
@@ -37,6 +64,20 @@ class UserReadSerializer(serializers.ModelSerializer):
         return obj.groups.values_list('name', flat=True).first()
 
 
+@extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            "Create User",
+            value={
+                "username": "new_user",
+                "email": "user@example.com",
+                "password": "strongpassword123",
+                "role_assign": "editor",
+                "is_active": True
+            }
+        )
+    ]
+)
 class UserWriteSerializer(serializers.ModelSerializer):
     """Only for input. Validates incoming data, nothing else."""
     role_assign = serializers.ChoiceField(
@@ -54,13 +95,6 @@ class UserWriteSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'email', 'password', 'role_assign', 'is_active')
 
-    # def validate_role_assign(self, group):
-    #     valid_roles = ('admin', 'editor', 'viewer')
-    #     if group.name not in valid_roles:
-    #         raise serializers.ValidationError(
-    #             f'Invalid role. Choose from: {", ".join(valid_roles)}'
-    #         )
-    #     return group
 
     def validate_username(self, value):
         query = User.objects.filter(username=value)
