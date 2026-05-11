@@ -39,10 +39,10 @@ class UserReadSerializer(serializers.ModelSerializer):
 
 class UserWriteSerializer(serializers.ModelSerializer):
     """Only for input. Validates incoming data, nothing else."""
-    role_assign = serializers.SlugRelatedField(
-        slug_field='name',
-        queryset=Group.objects.all(),
+    role_assign = serializers.ChoiceField(
+        choices=('admin', 'editor', 'viewer'),
         required=False,
+        write_only=True,
     )
     password = serializers.CharField(
         write_only=True,
@@ -54,13 +54,18 @@ class UserWriteSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username', 'email', 'password', 'role_assign', 'is_active')
 
-    def validate_role_assign(self, group):
-        valid_roles = ('admin', 'editor', 'viewer')
-        if group.name not in valid_roles:
-            raise serializers.ValidationError(
-                f'Invalid role. Choose from: {", ".join(valid_roles)}'
-            )
-        return group
+    # def validate_role_assign(self, group):
+    #     valid_roles = ('admin', 'editor', 'viewer')
+    #     if group.name not in valid_roles:
+    #         raise serializers.ValidationError(
+    #             f'Invalid role. Choose from: {", ".join(valid_roles)}'
+    #         )
+    #     return group
+
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return value
 
     def validate(self, attrs):
         if not self.instance and not attrs.get('password'):
