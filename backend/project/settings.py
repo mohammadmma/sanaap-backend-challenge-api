@@ -85,9 +85,10 @@ DATABASES = {
 }
 
 
+
 STORAGES = {
     "default": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "BACKEND": "apps.document.storage.MinIOStorage",
     },
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
@@ -95,18 +96,19 @@ STORAGES = {
 }
 
 # MinIO credentials — django-storages reads these automatically
-AWS_ACCESS_KEY_ID       = env('MINIO_ACCESS_KEY')
-AWS_SECRET_ACCESS_KEY   = env('MINIO_SECRET_KEY')
+AWS_ACCESS_KEY_ID = env('MINIO_ACCESS_KEY')
+AWS_SECRET_ACCESS_KEY = env('MINIO_SECRET_KEY')
 AWS_STORAGE_BUCKET_NAME = env('MINIO_BUCKET_NAME')
-AWS_S3_ENDPOINT_URL     = env('MINIO_ENDPOINT')
-AWS_S3_REGION_NAME      = 'us-east-1'   # MinIO ignores this, but boto3 requires it
+AWS_S3_ENDPOINT_URL = env('MINIO_ENDPOINT')
+MINIO_PUBLIC_ENDPOINT_URL = env('MINIO_PUBLIC_ENDPOINT_URL')   # Browser → MinIO (outside Docker)
+AWS_S3_REGION_NAME = 'us-east-1'   # MinIO ignores this, but boto3 requires it
 
 # --- Important behaviour settings ---
-AWS_DEFAULT_ACL          = None    # don't make files public automatically
-AWS_QUERYSTRING_AUTH     = True    # use presigned URLs (with expiry)
-AWS_QUERYSTRING_EXPIRE   = 3600   # presigned URLs expire after 1 hour
-AWS_S3_FILE_OVERWRITE    = False   # if two files have the same name, keep both
-AWS_S3_MAX_MEMORY_SIZE   = 10 * 1024 * 1024   # 10 MB buffer before spooling to disk
+AWS_DEFAULT_ACL = None    # don't make files public automatically
+AWS_QUERYSTRING_AUTH = True    # use presigned URLs (with expiry)
+AWS_QUERYSTRING_EXPIRE = 3600   # presigned URLs expire after 1 hour
+AWS_S3_FILE_OVERWRITE = False   # if two files have the same name, keep both
+AWS_S3_MAX_MEMORY_SIZE = 10 * 1024 * 1024   # 10 MB buffer before spooling to disk
 
 
 AUTH_PASSWORD_VALIDATORS = [

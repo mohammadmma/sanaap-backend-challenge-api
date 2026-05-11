@@ -1,6 +1,7 @@
 # documents/serializers.py
 from rest_framework import serializers
 from .models import Document
+from apps.authentication.permissions import get_user_role
 
 
 class DocumentSerializer(serializers.ModelSerializer):
@@ -31,3 +32,18 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     def get_image_url(self, obj):
         return obj.get_image_url()
+    
+    def validate(self, attrs):
+        request = self.context.get('request')
+        user = request.user if request else None
+
+        if self.instance and user:
+            is_admin = get_user_role(user) == "admin"
+
+            if not is_admin:
+                if 'file' in attrs and attrs['file'] is None:
+                    raise serializers.ValidationError({"file": "This field must not be empty!"})
+                if 'image' in attrs and attrs['image'] is None:
+                    raise serializers.ValidationError({"image": "This field must not be empty!"})
+        
+        return attrs
