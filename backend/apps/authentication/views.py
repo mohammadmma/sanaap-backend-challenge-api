@@ -11,6 +11,10 @@ from apps.authentication.serializers import RegisterValidator, UserReadSerialize
 from apps.authentication.models import AdminRequestModel
 from django.db import transaction
 from apps.authentication.services import UserService
+from django_filters.rest_framework import  DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
+from apps.authentication.filters import UserFilter
+from apps.authentication.pagination import StandardResultsSetPagination
 
 
 User = get_user_model()
@@ -43,6 +47,10 @@ class AdminDemadView(APIView):
 class UserCRUDModelViewSet(ModelViewSet):   # TODO: can delete superuser! can delete another admin! must be restricted or need approval
     permission_classes = [IsAdmin]
     queryset = User.objects.prefetch_related('groups').all()
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = UserFilter
+    pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
         """Read actions use ReadSerializer, write actions use WriteSerializer."""

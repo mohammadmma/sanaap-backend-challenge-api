@@ -8,6 +8,10 @@ class DocumentSerializer(serializers.ModelSerializer):
     # These are computed fields — they call the model methods
     file_url  = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
+    uploaded_by_username = serializers.CharField(
+        source='uploaded_by.username',
+        read_only=True
+    )
 
     class Meta:
         model  = Document
@@ -20,6 +24,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             'file_url',     # read-only (presigned URL for download)
             'image_url',    # read-only (presigned URL for download)
             'uploaded_by',
+            'uploaded_by_username',
             'created_at',
         ]
         extra_kwargs = {
