@@ -70,19 +70,14 @@ def reject_requests(modeladmin, request, queryset):     # TODO: remember to noti
 @admin.register(AdminRequestModel)
 class AdminRequestAdmin(admin.ModelAdmin):
 
-    # columns visible in the list view
     list_display = ('user', 'status', 'requested_at', 'reviewed_at')
 
-    # filter sidebar on the right
     list_filter = ('status',)
 
-    # search box at the top
     search_fields = ('user__username',)
 
-    # fields that cannot be edited
     readonly_fields = ('user', 'requested_at', 'reviewed_at')
 
-    # register both custom actions
     actions = [approve_requests, reject_requests]
 
 
