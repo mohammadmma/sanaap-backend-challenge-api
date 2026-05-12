@@ -11,7 +11,7 @@ def image_upload_path(instance, filename):
 
 
 class Document(models.Model):
-    title       = models.CharField(max_length=255)
+    title       = models.CharField(max_length=255, db_index=True)
     description = models.TextField(blank=True)
 
     file  = models.FileField(
@@ -31,8 +31,8 @@ class Document(models.Model):
         null=True,
         blank=True,
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
 
     def get_file_url(self):
         """Generate a temporary presigned URL for the file."""
