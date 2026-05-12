@@ -15,8 +15,8 @@ RUN pip install -r requirements.txt
 FROM python:3.12-slim
 
 RUN useradd -m -r django-user && \
-   mkdir -p /usr/src/web && \
-   chown -R django-user /usr/src/web
+    mkdir -p /usr/src/web/staticfiles && \
+    chown -R django-user /usr/src/web
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
