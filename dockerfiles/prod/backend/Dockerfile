@@ -25,9 +25,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
 
-USER django-user
-    
+
 WORKDIR /usr/src/web
+
+USER django-user
+
+COPY --chown=django-user:django-user --chmod=755 ./dockerfiles/prod/backend/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 COPY --chown=django-user:django-user ./backend/manage.py .
 COPY --chown=django-user:django-user ./backend/project ./project
@@ -35,4 +39,4 @@ COPY --chown=django-user:django-user ./backend/project ./project
 
 COPY --chown=django-user:django-user ./backend/apps ./apps
 
-ENTRYPOINT [ "sh", "-c", "python manage.py makemigrations && python manage.py migrate && gunicorn project.wsgi:application --bind 0.0.0.0:8000" ]
+ENTRYPOINT [ "./entrypoint.sh" ]
