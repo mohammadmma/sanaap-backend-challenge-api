@@ -102,6 +102,11 @@ Traditional Django media storage ties files to a single server's filesystem, whi
 - [Docker Compose](https://docs.docker.com/compose/) `>= 2.20`
 
 No local Python installation is required — everything runs inside Docker.
+Just run this command to clone the repo properly:
+```bash
+>>> git clone https://github.com/mohammadmma/sanaap-backend-challenge-api.git
+```
+
 
 ---
 
@@ -110,7 +115,7 @@ No local Python installation is required — everything runs inside Docker.
 Copy the example file and fill in your values:
 
 ```bash
-cp .env.example .env
+>>> cp .env.example .env
 ```
 
 `.env.example`:
@@ -119,6 +124,12 @@ cp .env.example .env
 # -------- Django related secret --------
 DEBUG=True if in development environment
 SECRET_KEY=your_super_secure_password
+
+
+# -------- Django superuser secret --------
+DJANGO_SUPERUSER_USERNAME=
+DJANGO_SUPERUSER_EMAIL=
+DJANGO_SUPERUSER_PASSWORD=
 
 
 # -------- Database related secret --------
@@ -149,13 +160,13 @@ DOCUMENT_CACHE_TTL=2700
 **Start all services:**
 
 ```bash
-docker compose -f docker-compose-prod.yml up --build
+>>> docker compose -f docker-compose-prod.yml up --build
 ```
 
 **Run in detached mode:**
 
 ```bash
-docker compose -f docker-compose-prod.yml up --build -d
+>>> docker compose -f docker-compose-prod.yml up --build -d
 ```
 
 **Apply database migrations:**
@@ -173,13 +184,13 @@ docker compose -f docker-compose-prod.yml up --build -d
 **Stop all services:**
 
 ```bash
-docker compose down
+>>> docker compose down
 ```
 
 **Stop and remove volumes** (full reset):
 
 ```bash
-docker compose down -v
+>>> docker compose down -v
 ```
 
 ---
@@ -202,54 +213,9 @@ Once running, the following are accessible:
 
 > swagger Documentation URL: `http://localhost/api/v1/docs/`
 
+> swagger Documentation URL: `http://localhost/api/v1/redoc/`
 
-<!-- 
-  ✏️  Fill in your actual endpoints below.
-  Example format shown — replace with real routes.
--->
 
-<!-- ### Authentication
-
-| Method | Endpoint | Description | Auth Required |
-|---|---|---|---|
-| `POST` | `/api/v1/auth/register/` | Register a new user | No |
-| `POST` | `/api/v1/auth/login/` | Obtain JWT token pair | No |
-| `POST` | `/api/v1/auth/token/refresh/` | Refresh access token | No | -->
-
-<!-- ### Resources
-
-| Method | Endpoint | Description | Auth Required |
-|---|---|---|---|
-| `GET` | `/api/v1/...` | ... | Yes |
-| `POST` | `/api/v1/...` | ... | Yes |
-| `GET` | `/api/v1/.../id/` | ... | Yes |
-| `PUT` | `/api/v1/.../id/` | ... | Yes |
-| `DELETE` | `/api/v1/.../id/` | ... | Yes | -->
-
-<!-- ### Response format
-
-All responses follow a consistent envelope:
-
-```json
-{
-  "status": "success",
-  "data": { },
-  "message": ""
-}
-```
-
-Error responses:
-
-```json
-{
-  "status": "error",
-  "errors": {
-    "field_name": ["This field is required."]
-  }
-}
-``` -->
-
-<!-- --- -->
 
 ## Design Decisions
 
@@ -285,11 +251,6 @@ Features not yet implemented but planned for the next iteration:
 - [ ] **Unit Test**
 - [ ] **Django Chennels**
 - [ ] **Audit Logging**
-<!-- - [ ] **Flower** — Celery monitoring dashboard -->
-<!-- - [ ] **HTTPS / TLS** — Nginx SSL termination with Let's Encrypt (Certbot) -->
-<!-- - [ ] **Rate limiting** — Nginx-level `limit_req_zone` per IP -->
-<!-- - [ ] **API documentation** — Swagger / ReDoc via `drf-spectacular` -->
-<!-- - [ ] **CI/CD pipeline** — GitHub Actions for lint, test, and build on push -->
 
 ---
 

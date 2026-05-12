@@ -11,19 +11,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
-
-
+# ============================================================================
+# 1. CORE DJANGO SETTINGS
+# ============================================================================
 
 
 SECRET_KEY = env.str('SECRET_KEY')
-
-
 DEBUG = env('DEBUG')
+ALLOWED_HOSTS = ["*"]
+APPEND_SLASH = True
+WSGI_APPLICATION = 'project.wsgi.application'
+ASGI_APPLICATION = "project.asgi.application"
+ROOT_URLCONF = 'project.urls'
 
-ALLOWED_HOSTS = []
 
-
-
+# ============================================================================
+# 2. INSTALLED APPS & MIDDLEWARE
+# ============================================================================
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -33,11 +37,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # Third-Party Apps
     'rest_framework',
-
     'drf_spectacular',
     'drf_spectacular_sidecar',
 
+    # Project apps
     'apps.authentication.apps.AuthenticationConfig',
     'apps.document.apps.DocumentConfig'
 ]
@@ -52,6 +57,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# ============================================================================
+# 3.  AUTHENTICATION & AUTHORIZATION
+# ============================================================================
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
@@ -62,11 +71,31 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+# ============================================================================
+# 4. SWAGGER CONFIGURATION
+# ============================================================================
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Sanaap API Challenge',
     'DESCRIPTION': ':)',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+
     # Other optional settings
     'COMPONENT_SPLIT_REQUEST': True,
     'SORT_OPERATIONS': False,
@@ -77,7 +106,9 @@ SPECTACULAR_SETTINGS = {
     'REDOC_DIST': 'SIDECAR',
 }
 
-ROOT_URLCONF = 'project.urls'
+# ============================================================================
+# 5. TEMPLATES & INTERNATIONALIZATION
+# ============================================================================
 
 TEMPLATES = [
     {
@@ -94,15 +125,22 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'project.wsgi.application'
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_TZ = True
 
-
-
+# ============================================================================
+# 6. DATABASE CONFIGURATION
+# ============================================================================
 
 DATABASES = {
     'default': env.db('DATABASE_URL')
 }
 
+# ============================================================================
+# 7. CACHE CONFIGURATION
+# ============================================================================
 
 CACHES = {
     "default": {
@@ -116,7 +154,9 @@ CACHES = {
 }
 DOCUMENT_CACHE_TTL = env.int('DOCUMENT_CACHE_TTL')
 
-
+# ============================================================================
+# 8. STORAGE (MINIO) CONFIGURATION
+# ============================================================================
 
 STORAGES = {
     "default": {
@@ -142,35 +182,11 @@ AWS_QUERYSTRING_EXPIRE = 60 * 60
 AWS_S3_FILE_OVERWRITE = False
 AWS_S3_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
-
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
+# ============================================================================
+# 8. SESSION & STATIC & MEDIA
+# ============================================================================
 
 SESSION_COOKIE_AGE = 60 * 60 * 24
-
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
-USE_I18N = True
-
-USE_TZ = True
-
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
