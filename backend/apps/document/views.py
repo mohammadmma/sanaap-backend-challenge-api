@@ -11,6 +11,7 @@ from apps.document.filters import DocumentFilter
 from apps.document.pagination import StandardResultsSetPagination
 from .models import Document
 from .serializers import DocumentSerializer
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 
 
 class DocumentViewSet(viewsets.ModelViewSet):
@@ -66,6 +67,12 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
 
 
+    @extend_schema(
+    tags=["Documents"],
+    summary="Retrieve document",
+    description="Returns a single document. Response is cached.",
+    responses={200: DocumentSerializer}
+    )
     def retrieve(self, request, *args, **kwargs):
         """Cache the detail view of a document."""
         pk = kwargs.get('pk')
@@ -80,6 +87,31 @@ class DocumentViewSet(viewsets.ModelViewSet):
         cache.set(cache_key, response.data, timeout=getattr(settings, 'DOCUMENT_CACHE_TTL', 2700))
         return response
 
+
+    @extend_schema(
+        tags=["Documents"],
+        summary="List documents",
+        description="""
+    Returns paginated list of documents.
+
+    Supports:
+    - filtering
+    - search
+    - ordering
+    - caching (response may be cached)
+    """,
+        parameters=[
+            OpenApiParameter("title", str, description="Case-insensitive title search"),
+            OpenApiParameter("uploaded_by", int),
+            OpenApiParameter("created_after", str),
+            OpenApiParameter("created_before", str),
+            OpenApiParameter("search", str, description="Search in title & description"),
+            OpenApiParameter("ordering", str, description="created_at, title"),
+            OpenApiParameter("page", int),
+            OpenApiParameter("page_size", int),
+        ],
+        responses={200: DocumentSerializer(many=True)}
+    )
     def list(self, request, *args, **kwargs):
         """Cache the list view, accounting for query params (filters/pages)."""
 
@@ -109,6 +141,85 @@ class DocumentViewSet(viewsets.ModelViewSet):
         instance.delete()
         self._invalidate_document_cache(pk)
 
+    
+    @extend_schema(
+        tags=["Documents"],
+        summary="Create document",
+        description="""
+    Creates a document with optional file/image upload.
+
+    Requires:
+    - Editor role
+
+    Content-Type must be:
+    - multipart/form-data
+    """,
+        request=DocumentSerializer,
+        responses={201: DocumentSerializer}
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+
+    @extend_schema(
+        tags=["Documents"],
+        summary="Update document",
+        description="""
+    Updates document fields.
+
+    ⚠️ Non-admin users:
+    - Cannot set file/image to null
+    """,
+        request=DocumentSerializer,
+        responses={200: DocumentSerializer}
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+    
+
+    @extend_schema(
+        tags=["Documents"],
+        summary="Update document",
+        description="""
+    Updates document fields.
+
+    ⚠️ Non-admin users:
+    - Cannot set file/image to null
+    """,
+        request=DocumentSerializer,
+        responses={200: DocumentSerializer}
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+    
+
+    @extend_schema(
+    tags=["Documents"],
+    summary="Delete document",
+    description="Deletes a document (Admin only).",
+    responses={
+        204: OpenApiResponse(description="Deleted successfully"),
+        403: OpenApiResponse(description="Forbidden")
+    }
+)
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+
+    @extend_schema(
+        tags=["Documents"],
+        summary="Remove file from document",
+        description="""
+    Deletes the file associated with the document.
+
+    - Admin only
+    - Invalidates cache
+    """,
+        responses={
+            204: OpenApiResponse(description="File deleted"),
+            400: OpenApiResponse(description="No file found")
+        }
+    )
     @action(detail=True, methods=['post'], url_path='clear_file')
     def clear_file(self, request, pk=None):
         obj = self.get_object()
@@ -119,9 +230,23 @@ class DocumentViewSet(viewsets.ModelViewSet):
             
 
             self._invalidate_document_cache(pk)
-            return Response({"detail": "File deleted."}, status=status.HTTP_204_NO_CONTENT)
+            return Response(status=status.HTTP_204_NO_CONTENT)
         return Response({"detail": "No file found."}, status=400)
     
+
+    @extend_schema(
+        tags=["Documents"],
+        summary="Remove image from document",
+        description="""
+    Deletes the image associated with the document.
+
+    - Admin only
+    """,
+        responses={
+            200: OpenApiResponse(description="Image deleted"),
+            400: OpenApiResponse(description="No image found")
+        }
+    )
     @action(detail=True, methods=['post'], url_path='clear_image')
     def clear_image(self, request, pk=None):
         obj = self.get_object()
@@ -132,5 +257,5 @@ class DocumentViewSet(viewsets.ModelViewSet):
             
 
             self._invalidate_document_cache(pk)
-            return Response({"detail": "Image deleted."})
+            return Response(status=status.HTTP_204_NO_CONTENT)
         return Response({"detail": "No image found."}, status=400)
