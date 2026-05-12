@@ -14,6 +14,7 @@
   - [Prerequisites](#prerequisites)
   - [Environment Variables](#environment-variables)
   - [Run with Docker](#run-with-docker)
+  - [Service URL](#service-urls)
 - [API Reference](#api-reference)
 - [Design Decisions](#design-decisions)
 - [Roadmap](#roadmap)
