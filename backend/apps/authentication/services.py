@@ -37,7 +37,7 @@ class UserService:
                 user.save()
 
             if role_assign:
-                group, _ = Group.objects.get_or_create(name=role_assign.name)
+                group, _ = Group.objects.get_or_create(name=role_assign)
                 user.groups.set([group])
 
         return user

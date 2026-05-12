@@ -1,8 +1,37 @@
 from rest_framework import serializers
 from .models import Document
 from apps.authentication.permissions import get_user_role
+from drf_spectacular.utils import extend_schema_serializer, OpenApiExample
 
 
+@extend_schema_serializer(
+    examples=[
+        OpenApiExample(
+            "Create Document (file upload)",
+            value={
+                "title": "Project Spec",
+                "description": "API documentation file",
+                "file": "(binary file)",
+                "image": None
+            },
+            request_only=True
+        ),
+        OpenApiExample(
+            "Document Response",
+            value={
+                "id": 1,
+                "title": "Project Spec",
+                "description": "API documentation file",
+                "file_url": "https://minio.example.com/files/uuid/file.pdf",
+                "image_url": None,
+                "uploaded_by": 5,
+                "uploaded_by_username": "john_doe",
+                "created_at": "2026-01-01T12:00:00Z"
+            },
+            response_only=True
+        )
+    ]
+)
 class DocumentSerializer(serializers.ModelSerializer):
     file_url  = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
