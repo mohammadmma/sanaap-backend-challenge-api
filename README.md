@@ -14,6 +14,7 @@
   - [Prerequisites](#prerequisites)
   - [Environment Variables](#environment-variables)
   - [Run with Docker](#run-with-docker)
+  - [Service URL](#service-urls)
 - [API Reference](#api-reference)
 - [Design Decisions](#design-decisions)
 - [Roadmap](#roadmap)
@@ -191,7 +192,7 @@ Once running, the following are accessible:
 |---|---|---|
 | Django API | `http://localhost/` | Proxied through Nginx |
 | Django Admin | `http://localhost/admin/` | |
-| MinIO Console | `http://localhost/minio-console/` | Object storage admin UI |
+| MinIO Console | `http://localhost/minio/` | Object storage admin UI |
 
 ---
 
@@ -199,7 +200,8 @@ Once running, the following are accessible:
 
 > Base URL: `http://localhost/api/v1/`
 
-> swagger documentation URL: `http://localhost/api/v1/docs/`
+> swagger Documentation URL: `http://localhost/api/v1/docs/`
+
 
 <!-- 
   ✏️  Fill in your actual endpoints below.
