@@ -11,7 +11,7 @@ class UserService:
     def create_user(validated_data: dict):
         """Creates a user, hashes password, assigns role."""
         password    = validated_data.pop('password')
-        role_assign = validated_data.pop('role_assign', 'viewer')
+        role_assign = validated_data.pop('role_assign', None)
 
         with transaction.atomic():
             user = User.objects.create_user(password=password, **validated_data)
@@ -25,7 +25,7 @@ class UserService:
     def update_user(user, validated_data: dict):
         """Updates a user. Password and role are both optional."""
         password    = validated_data.pop('password', None)
-        role_assign = validated_data.pop('role_assign', 'viewer')
+        role_assign = validated_data.pop('role_assign', None)
 
         with transaction.atomic():
             for field, value in validated_data.items():
