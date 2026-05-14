@@ -44,7 +44,4 @@ class UserService:
 
     @staticmethod
     def delete_user(requesting_user, target_user) -> None:
-        """Deletes a user. Prevents self-deletion."""
-        if requesting_user == target_user:
-            raise ValueError('You cannot delete your own account.')
         target_user.delete()

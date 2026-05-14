@@ -72,8 +72,10 @@ class UserCRUDModelViewSet(ModelViewSet):
             .prefetch_related('groups').all()
         )
 
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = UserFilter
+    ordering_fields = ['id', 'username', 'email', 'date_joined']
+    ordering = ['id']
     pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
@@ -167,7 +169,7 @@ class UserCRUDModelViewSet(ModelViewSet):
             return Response("You can not manipulate this user", status=status.HTTP_400_BAD_REQUEST)
         try:
             UserService.delete_user(request.user, target_user)
-        except ValueError as e:
+        except Exception as e:
             raise serializers.ValidationError({'error': str(e)})
         return Response(
             {'message': f'User ({target_user.username}) deleted successfully.'},
