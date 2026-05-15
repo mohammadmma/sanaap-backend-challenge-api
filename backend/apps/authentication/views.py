@@ -69,14 +69,13 @@ class UserCRUDModelViewSet(ModelViewSet):
     def get_queryset(self):
         return (
             User.objects
-            .prefetch_related('groups')
-            .filter(is_superuser=False)
-            .exclude(groups__name='admin')
-            .distinct()
+            .prefetch_related('groups').all()
         )
 
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = UserFilter
+    ordering_fields = ['id', 'username', 'email', 'date_joined']
+    ordering = ['id']
     pagination_class = StandardResultsSetPagination
 
     def get_serializer_class(self):
@@ -135,6 +134,10 @@ class UserCRUDModelViewSet(ModelViewSet):
     responses={200: UserReadSerializer}
     )
     def update(self, request, *args, **kwargs):
+        target_user = self.get_object()
+        target_groups = target_user.groups.values_list('name', flat=True).first()
+        if target_user.is_superuser or target_groups == 'admin':
+            return Response("You can not manipulate this user", status=status.HTTP_400_BAD_REQUEST)
         return super().update(request, *args, **kwargs)
     
     @extend_schema(
@@ -144,6 +147,10 @@ class UserCRUDModelViewSet(ModelViewSet):
     responses={200: UserReadSerializer}
     )
     def partial_update(self, request, *args, **kwargs):
+        target_user = self.get_object()
+        target_groups = target_user.groups.values_list('name', flat=True).first()
+        if target_user.is_superuser or target_groups == 'admin':
+            return Response("You can not manipulate this user", status=status.HTTP_400_BAD_REQUEST)
         return super().partial_update(request, *args, **kwargs)
 
 
@@ -157,9 +164,12 @@ class UserCRUDModelViewSet(ModelViewSet):
     )
     def destroy(self, request, *args, **kwargs):
         target_user = self.get_object()
+        target_groups = target_user.groups.values_list('name', flat=True).first()
+        if target_user.is_superuser or target_groups == 'admin':
+            return Response("You can not manipulate this user", status=status.HTTP_400_BAD_REQUEST)
         try:
             UserService.delete_user(request.user, target_user)
-        except ValueError as e:
+        except Exception as e:
             raise serializers.ValidationError({'error': str(e)})
         return Response(
             {'message': f'User ({target_user.username}) deleted successfully.'},

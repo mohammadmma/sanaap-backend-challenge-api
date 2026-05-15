@@ -97,12 +97,8 @@ class UserWriteSerializer(serializers.ModelSerializer):
 
 
     def validate_username(self, value):
-        query = User.objects.filter(username=value)
-        
-        if self.instance:
-            query = query.exclude(pk=self.instance.pk)
-
-        if query.exists():
+        query = User.objects.filter(username=value).exists()
+        if query:
             raise serializers.ValidationError("This username is already taken.")
         
         return value
