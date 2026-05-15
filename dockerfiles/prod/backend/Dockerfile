@@ -3,7 +3,8 @@ FROM python:3.12-slim AS builder
 WORKDIR /usr/src/web
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_INDEX_URL=https://mirror2.chabokan.net/pypi/simple/
 
 RUN pip install --upgrade pip
 

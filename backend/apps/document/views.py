@@ -210,11 +210,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
         files_payload = self._extract_files_payload(request)
 
         # Strip file fields so the write serializer never sees them
-        data = request.data.copy()
-        data.pop('file', None)
-        data.pop('image', None)
+        # data = request.data.copy()
+        # data.pop('file', None)
+        # data.pop('image', None)
 
-        serializer = self.get_serializer(data=data)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         with transaction.atomic():
@@ -251,11 +251,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
         instance      = self.get_object()
         files_payload = self._extract_files_payload(request)
 
-        data = request.data.copy()
-        data.pop('file', None)
-        data.pop('image', None)
+        # data = request.data.copy()
+        # data.pop('file', None)
+        # data.pop('image', None)
 
-        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
 
         with transaction.atomic():
@@ -331,7 +331,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             400: OpenApiResponse(description="No file found")
         }
     )
-    @action(detail=True, methods=['post'], url_path='clear_file')
+    @action(detail=True, methods=['post'], url_path='clear-file')
     def clear_file(self, request, pk=None):
         obj = self.get_object()
         if obj.file:

@@ -8,9 +8,18 @@ from botocore.exceptions import BotoCoreError, ClientError
 from celery import shared_task
 # from django.apps import apps
 from apps.document.models import Document, DocumentStatus
+from apps.document.services import DocumentCacheService
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+def _get_cache_service():
+    """
+    DIP (Dependency Inversion): Centralizes cache instantiation.
+    If you switch to Memcached, Mock Cache for testing, etc., 
+    you only change it here.
+    """
+    return DocumentCacheService()
 
 
 def _build_s3_client():
@@ -57,6 +66,7 @@ def _upload_one_file(s3_client, file_entry: dict) -> str:
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=10)
 def upload_document_files(self, document_id: int, files_data: list[dict]):
+    cache_service = _get_cache_service()
 
     try:
         document = Document.objects.get(pk=document_id)
@@ -68,6 +78,8 @@ def upload_document_files(self, document_id: int, files_data: list[dict]):
     # ── Step 2: mark as processing so the client knows work has started ────────
     document.status = 'processing'
     document.save(update_fields=['status'])
+    
+    cache_service.invalidate(pk=document_id)
     # update_fields=['status'] tells Django to only UPDATE that one column,
     # not re-save the entire row. Faster and avoids race conditions with
     # other fields being modified concurrently.
@@ -98,6 +110,8 @@ def upload_document_files(self, document_id: int, files_data: list[dict]):
         document.save(update_fields=update_fields)
         # update_fields here might be: ['status', 'file', 'image']
         # Only the columns that actually changed get written.
+        cache_service.invalidate(pk=document_id)
+        logger.info("Cache successfully flushed by Celery for Document %s", document_id)
         # ── Step 4: handle failures at two levels ─────────────────────────────────
 
     except (BotoCoreError, ClientError) as exc:
