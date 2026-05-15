@@ -1,5 +1,7 @@
 import uuid
 from django.db import models
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 
 def file_upload_path(instance, filename):
@@ -9,6 +11,12 @@ def file_upload_path(instance, filename):
 def image_upload_path(instance, filename):
     return f"images/{uuid.uuid4()}/{filename}"
 
+
+class DocumentStatus(models.TextChoices):
+    PENDING    = 'pending',    'Pending'
+    PROCESSING = 'processing', 'Processing'
+    DONE       = 'done',       'Done'
+    FAILED     = 'failed',     'Failed'
 
 class Document(models.Model):
     title       = models.CharField(max_length=255, db_index=True)
@@ -26,11 +34,20 @@ class Document(models.Model):
     )
 
     uploaded_by = models.ForeignKey(
-        'auth.User',
+        User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
+
+    status  = models.CharField(
+        max_length=20,
+        choices=DocumentStatus.choices,
+        default=DocumentStatus.PENDING,
+        db_index=True,
+    )
+    task_id = models.CharField(max_length=255, blank=True, null=True)
+
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
 
