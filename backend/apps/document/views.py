@@ -1,5 +1,8 @@
-from django.conf import settings
-from django.core.cache import cache
+import base64
+import logging
+
+# from django.conf import settings
+# from django.core.cache import cache
 from rest_framework import viewsets, parsers, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -9,15 +12,16 @@ from django.db import transaction
 from apps.authentication.permissions import IsAdmin, IsEditor, IsViewer
 from apps.document.filters import DocumentFilter
 from apps.document.pagination import StandardResultsSetPagination
-from apps.document.models import Document
-from apps.document.serializers import DocumentSerializer
+from apps.document.models import Document, DocumentStatus
+from apps.document.serializers import DocumentReadSerializer, DocumentWriteSerializer
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from apps.document.services import AbstractDocumentCacheService, DocumentCacheService
+from apps.document.tasks import upload_document_files
 
+logger = logging.getLogger(__name__)
 
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.select_related('uploaded_by').all().order_by('-created_at')
-    serializer_class = DocumentSerializer
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
 
@@ -36,6 +40,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
         elif self.action in ['create', 'update', 'partial_update']:
             return [IsEditor()]
         return [IsViewer()]
+    
+    def get_serializer_class(self):
+        if self.action in ('create', 'update', 'partial_update'):
+            return DocumentWriteSerializer
+        return DocumentReadSerializer
 
     
     parser_classes = [
@@ -83,7 +92,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
     tags=["Documents"],
     summary="Retrieve document",
     description="Returns a single document. Response is cached.",
-    responses={200: DocumentSerializer}
+    responses={200: DocumentReadSerializer}
     )
     def retrieve(self, request, *args, **kwargs):
         """Cache the detail view of a document."""
@@ -125,7 +134,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             OpenApiParameter("page", int),
             OpenApiParameter("page_size", int),
         ],
-        responses={200: DocumentSerializer(many=True)}
+        responses={200: DocumentReadSerializer(many=True)}
     )
     def list(self, request, *args, **kwargs):
         """Cache the list view, accounting for query params (filters/pages)."""
@@ -146,16 +155,34 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return response
 
 
+    def _extract_files_payload(self, request):
+        """
+        SRP: isolated helper that extracts and base64-encodes uploaded files.
+        Returns a list ready to pass directly to the Celery task.
+        Keeping this separate means the create/update methods stay readable.
+        """
+        payload = []
+        for field_name in ('file', 'image'):
+            uploaded = request.FILES.get(field_name)
+            if uploaded:
+                payload.append({
+                    'field_name':   field_name,
+                    'filename':     uploaded.name,
+                    'content_type': uploaded.content_type,
+                    'data_b64':     base64.b64encode(uploaded.read()).decode('utf-8'),
+                })
+        return payload
 
-    def perform_create(self, serializer):
-        serializer.save(uploaded_by=self.request.user)
-        # self._invalidate_document_cache()
-        self.get_cache_service().invalidate()
 
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        # self._invalidate_document_cache(instance.pk)
-        self.get_cache_service().invalidate(instance.pk)
+    # def perform_create(self, serializer):
+    #     serializer.save(uploaded_by=self.request.user)
+    #     # self._invalidate_document_cache()
+    #     self.get_cache_service().invalidate()
+
+    # def perform_update(self, serializer):
+    #     instance = serializer.save()
+    #     # self._invalidate_document_cache(instance.pk)
+    #     self.get_cache_service().invalidate(instance.pk)
 
     def perform_destroy(self, instance):
         pk = instance.pk
@@ -176,11 +203,35 @@ class DocumentViewSet(viewsets.ModelViewSet):
     Content-Type must be:
     - multipart/form-data
     """,
-        request=DocumentSerializer,
-        responses={201: DocumentSerializer}
+        request=DocumentWriteSerializer,
+        responses={201: DocumentReadSerializer}
     )
     def create(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        files_payload = self._extract_files_payload(request)
+
+        # Strip file fields so the write serializer never sees them
+        # data = request.data.copy()
+        # data.pop('file', None)
+        # data.pop('image', None)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            document = serializer.save(
+                uploaded_by=request.user,
+                status=DocumentStatus.PENDING if files_payload else DocumentStatus.DONE,
+            )
+
+        if files_payload:
+            task = upload_document_files.delay(document.id, files_payload)
+            document.task_id = task.id
+            document.save(update_fields=['task_id'])
+            logger.info("Document %s created — upload task %s queued.", document.id, task.id)
+
+        self.get_cache_service().invalidate()
+        response_status = status.HTTP_202_ACCEPTED if files_payload else status.HTTP_201_CREATED
+        return Response(DocumentReadSerializer(document).data, status=response_status)
 
 
     @extend_schema(
@@ -192,11 +243,34 @@ class DocumentViewSet(viewsets.ModelViewSet):
     ⚠️ Non-admin users:
     - Cannot set file/image to null
     """,
-        request=DocumentSerializer,
-        responses={200: DocumentSerializer}
+        request=DocumentWriteSerializer,
+        responses={200: DocumentReadSerializer}
     )
     def update(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        partial       = kwargs.pop('partial', False)
+        instance      = self.get_object()
+        files_payload = self._extract_files_payload(request)
+
+        # data = request.data.copy()
+        # data.pop('file', None)
+        # data.pop('image', None)
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            document = serializer.save(
+                status=DocumentStatus.PENDING if files_payload else instance.status,
+            )
+
+        if files_payload:
+            task = upload_document_files.delay(document.id, files_payload)
+            document.task_id = task.id
+            document.save(update_fields=['task_id'])
+
+        self.get_cache_service().invalidate(instance.pk)
+        response_status = status.HTTP_202_ACCEPTED if files_payload else status.HTTP_200_OK
+        return Response(DocumentReadSerializer(document).data, status=response_status)
     
 
     @extend_schema(
@@ -208,8 +282,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
     ⚠️ Non-admin users:
     - Cannot set file/image to null
     """,
-        request=DocumentSerializer,
-        responses={200: DocumentSerializer}
+        request=DocumentWriteSerializer,
+        responses={200: DocumentReadSerializer}
     )
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
@@ -226,6 +300,21 @@ class DocumentViewSet(viewsets.ModelViewSet):
 )
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
+    
+    @action(detail=True, methods=['get'], url_path='upload-status')
+    def upload_status(self, request, pk=None):
+        """
+        SRP: dedicated endpoint for polling async upload state.
+        Clients call this after receiving 202 until status == 'done' | 'failed'.
+        """
+        document = self.get_object()
+        return Response({
+            'id':        document.id,
+            'status':    document.status,
+            'task_id':   document.task_id,
+            'file_url':  document.get_file_url(),
+            'image_url': document.get_image_url(),
+        })
 
 
     @extend_schema(
@@ -242,7 +331,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             400: OpenApiResponse(description="No file found")
         }
     )
-    @action(detail=True, methods=['post'], url_path='clear_file')
+    @action(detail=True, methods=['post'], url_path='clear-file')
     def clear_file(self, request, pk=None):
         obj = self.get_object()
         if obj.file:

@@ -38,7 +38,7 @@ services:
     container_name: sanaap_backend
     env_file: .env
     environment:
-      - DOCKER_CONTAINER=True
+      # - DOCKER_CONTAINER=True
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     ports:
       - "8080:8000"
@@ -83,6 +83,27 @@ services:
         mc anonymous set none local/${MINIO_BUCKET_NAME};
         echo 'Security Policy Applied to ${MINIO_BUCKET_NAME}';
       "
+
+  celery:
+    build:
+      context: .
+      dockerfile: dockerfiles/dev/backend/Dockerfile
+    container_name: sanaap_celery
+    command: celery -A project worker --loglevel=info --concurrency=4
+    env_file: .env
+    environment:
+      # - DOCKER_CONTAINER=True
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    volumes:
+      - ./backend:/usr/src/web
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
 
 volumes:
   minio_data:
