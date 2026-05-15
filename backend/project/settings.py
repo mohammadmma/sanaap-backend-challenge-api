@@ -183,7 +183,21 @@ AWS_S3_FILE_OVERWRITE = False
 AWS_S3_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 # ============================================================================
-# 8. SESSION & STATIC & MEDIA
+# 9. CELERY CONFIGURATION
+# ============================================================================
+CELERY_BROKER_URL = env('CELERY_BROKER_URL')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND')
+CELERY_RESULT_EXPIRES = 60 * 60 * 24
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1 
+
+# ============================================================================
+# 10. SESSION & STATIC & MEDIA
 # ============================================================================
 
 SESSION_COOKIE_AGE = 60 * 60 * 24
