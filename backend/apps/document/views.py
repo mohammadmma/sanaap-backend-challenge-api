@@ -9,8 +9,9 @@ from django.db import transaction
 from apps.authentication.permissions import IsAdmin, IsEditor, IsViewer
 from apps.document.filters import DocumentFilter
 from apps.document.pagination import StandardResultsSetPagination
-from .models import Document
-from .serializers import DocumentSerializer
+from apps.document.models import Document
+from apps.document.serializers import DocumentSerializer
+from apps.document.services import CacheKeyService
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 
 
@@ -44,21 +45,21 @@ class DocumentViewSet(viewsets.ModelViewSet):
     ]
 
 
-    def _get_detail_cache_key(self, pk):
-        return f"document_detail_{pk}"
+    # def _get_detail_cache_key(self, pk):
+    #     return f"document_detail_{pk}"
 
-    def _get_list_cache_pattern(self):
+    # def _get_list_cache_pattern(self):
         
-        return "document_list_*"
+    #     return "document_list_*"
 
     def _invalidate_document_cache(self, pk=None):
         """Clears detail cache for a specific PK and sweeps all list caches."""
         keys_to_delete = []
         if pk:
-            keys_to_delete.append(self._get_detail_cache_key(pk))
+            keys_to_delete.append(CacheKeyService.generate_detail_cache_key(pk))
         
         
-        list_keys = cache.keys(self._get_list_cache_pattern())
+        list_keys = cache.keys(CacheKeyService.generate_list_cache_key())
         if list_keys:
             keys_to_delete.extend(list_keys)
             
@@ -76,7 +77,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         """Cache the detail view of a document."""
         pk = kwargs.get('pk')
-        cache_key = self._get_detail_cache_key(pk)
+        cache_key = CacheKeyService.generate_detail_cache_key(pk)
         cached_data = cache.get(cache_key)
 
         if cached_data is not None:
@@ -115,8 +116,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         """Cache the list view, accounting for query params (filters/pages)."""
 
-        query_string = request.META.get('QUERY_STRING', '')
-        cache_key = f"document_list_{query_string}"
+        # query_string = request.META.get('QUERY_STRING', '')
+        # # query_string = request.query_params.dict().items()
+        # print(f"^^^^^^^^^^^^^^^^^^{query_string}")
+
+        cache_key = CacheKeyService.generate_list_cache_key(request)
         cached_data = cache.get(cache_key)
 
         if cached_data is not None:
