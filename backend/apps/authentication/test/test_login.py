@@ -26,22 +26,17 @@ class LoginTestCase(APITestCase):
             'username': self.valid_user.username,
             'password': self.valid_user.raw_password
         }
-        # print(f"########### {login_dict}")
 
         response = self.client.post(self.login_url, login_dict)
-        # print(f'################################ {response.cookies}')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
         cookie_name = settings.SESSION_COOKIE_NAME
-        # print(f"cookie name ------------------------> {cookie_name}")
         self.assertIn(cookie_name, response.cookies)
 
         session_key = response.cookies[settings.SESSION_COOKIE_NAME].value
-        # print(f"session key -----------------> {session_key}")
     
-        # Check if this key exists in the DB
         session_exists = Session.objects.filter(session_key=session_key).exists()
         self.assertTrue(session_exists)
 
@@ -52,7 +47,6 @@ class LoginTestCase(APITestCase):
         }
 
         response = self.client.post(self.login_url, login_dict)
-        # print(f"################## {response.data}")
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(response.data, "Invalid credentials")
@@ -65,7 +59,6 @@ class LoginTestCase(APITestCase):
         }
 
         response = self.client.post(self.login_url, login_dict)
-        # print(f"################## {response.data}")
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(response.data, "Invalid credentials")

@@ -34,9 +34,6 @@ class UserCRUDTestCase(APITestCase):
         url = f'{self.list_url}?ordering=username'
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # We created 5 users in setUpTestData
-        # Note: If your view uses pagination, check response.data['results']
-        # print(f"^^^^^^^^^^^^^^^{response.data}")
         usernames = [user['username'] for user in response.data['results']]
         results = response.data.get('results')
         count = response.data.get('count')
@@ -57,7 +54,6 @@ class UserCRUDTestCase(APITestCase):
     
     def test_if_try_update_another_admin_acount_error_400(self):
         url = reverse('user_crud-detail', kwargs={'pk': self.other_admin.id})
-        # print(f"^^^^^^^^^^^^^^^^^^^^^^^^^^{self.other_admin.pk}")
         response = self.client.put(url, {'username': 'editor', 'role_assign': 'editor'})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, "You can not manipulate this user")
@@ -79,7 +75,6 @@ class UserCRUDTestCase(APITestCase):
 
     def test_if_try_update_superuser_acount_error_400(self):
         url = reverse('user_crud-detail', kwargs={'pk': self.superuser.id})
-        # print(f"^^^^^^^^^^^^^^^^^^^^^^^^^^{self.other_admin.pk}")
         response = self.client.put(url, {'username': 'hacked_superuser', 'role_assign': 'editor'})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, "You can not manipulate this user")
@@ -104,7 +99,6 @@ class UserCRUDTestCase(APITestCase):
         url = reverse('user_crud-detail', kwargs={'pk': self.other_admin.pk})
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        # Check that the user still exists in DB
         self.assertTrue(User.objects.filter(pk=self.other_admin.pk).exists())
 
     def test_if_try_delete_superuser_acount_error_400(self):
@@ -115,7 +109,6 @@ class UserCRUDTestCase(APITestCase):
     def test_if_try_delete_own_acount_error_400(self):
         url = reverse('user_crud-detail', kwargs={'pk': self.admin_user.pk})
         response = self.client.delete(url)
-        # print(f"^^^^^^^^^^^^^{response.data}")
         
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, 'You can not manipulate this user')
@@ -125,5 +118,4 @@ class UserCRUDTestCase(APITestCase):
         response = self.client.delete(url)
         
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        # Confirm user is gone from database
         self.assertFalse(User.objects.filter(pk=self.viewer_user.pk).exists())
