@@ -11,8 +11,8 @@ from apps.document.filters import DocumentFilter
 from apps.document.pagination import StandardResultsSetPagination
 from apps.document.models import Document
 from apps.document.serializers import DocumentSerializer
-from apps.document.services import CacheKeyService
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
+from apps.document.services import AbstractDocumentCacheService, DocumentCacheService
 
 
 class DocumentViewSet(viewsets.ModelViewSet):
@@ -44,6 +44,17 @@ class DocumentViewSet(viewsets.ModelViewSet):
         parsers.JSONParser,        
     ]
 
+    cache_service_class: type[AbstractDocumentCacheService] = DocumentCacheService
+
+    def get_cache_service(self) -> AbstractDocumentCacheService:
+        """
+        Factory method (GoF). Subclasses or tests override cache_service_class,
+        not this method. One override point, not scattered instantiations.
+        """
+        if not hasattr(self, '_cache_service'):
+            self._cache_service = self.cache_service_class()
+        return self._cache_service
+
 
     # def _get_detail_cache_key(self, pk):
     #     return f"document_detail_{pk}"
@@ -52,19 +63,19 @@ class DocumentViewSet(viewsets.ModelViewSet):
         
     #     return "document_list_*"
 
-    def _invalidate_document_cache(self, pk=None):
-        """Clears detail cache for a specific PK and sweeps all list caches."""
-        keys_to_delete = []
-        if pk:
-            keys_to_delete.append(CacheKeyService.generate_detail_cache_key(pk))
+    # def _invalidate_document_cache(self, pk=None):
+    #     """Clears detail cache for a specific PK and sweeps all list caches."""
+    #     keys_to_delete = []
+    #     if pk:
+    #         keys_to_delete.append(CacheKeyService.generate_detail_cache_key(pk))
         
         
-        list_keys = cache.keys(CacheKeyService.generate_list_cache_key())
-        if list_keys:
-            keys_to_delete.extend(list_keys)
+    #     list_keys = cache.keys(CacheKeyService.generate_list_cache_key())
+    #     if list_keys:
+    #         keys_to_delete.extend(list_keys)
             
-        if keys_to_delete:
-            cache.delete_many(keys_to_delete)
+    #     if keys_to_delete:
+    #         cache.delete_many(keys_to_delete)
 
 
 
@@ -77,15 +88,18 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         """Cache the detail view of a document."""
         pk = kwargs.get('pk')
-        cache_key = CacheKeyService.generate_detail_cache_key(pk)
-        cached_data = cache.get(cache_key)
+        # cache_key = CacheKeyService.generate_detail_cache_key(pk)
+        # cached_data = cache.get(cache_key)
+        cache_service = self.get_cache_service()
+        cached_data = cache_service.get_detail(pk)
 
         if cached_data is not None:
             return Response(cached_data)
 
 
         response = super().retrieve(request, *args, **kwargs)
-        cache.set(cache_key, response.data, timeout=getattr(settings, 'DOCUMENT_CACHE_TTL', 2700))
+        # cache.set(cache_key, response.data, timeout=getattr(settings, 'DOCUMENT_CACHE_TTL', 2700))
+        cache_service.set_detail(pk, response.data)
         return response
 
 
@@ -120,30 +134,34 @@ class DocumentViewSet(viewsets.ModelViewSet):
         # # query_string = request.query_params.dict().items()
         # print(f"^^^^^^^^^^^^^^^^^^{query_string}")
 
-        cache_key = CacheKeyService.generate_list_cache_key(request)
-        cached_data = cache.get(cache_key)
+        # cache_key = CacheKeyService.generate_list_cache_key(request)
+        cache_service = self.get_cache_service()
+        cached_data = cache_service.get_list(request)
 
         if cached_data is not None:
             return Response(cached_data)
 
         response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, timeout=getattr(settings, 'DOCUMENT_CACHE_TTL', 2700))
+        cache_service.set_list(request, response.data)
         return response
 
 
 
     def perform_create(self, serializer):
         serializer.save(uploaded_by=self.request.user)
-        self._invalidate_document_cache()
+        # self._invalidate_document_cache()
+        self.get_cache_service().invalidate()
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        self._invalidate_document_cache(instance.pk)
+        # self._invalidate_document_cache(instance.pk)
+        self.get_cache_service().invalidate(instance.pk)
 
     def perform_destroy(self, instance):
         pk = instance.pk
         instance.delete()
-        self._invalidate_document_cache(pk)
+        # self._invalidate_document_cache(pk)
+        self.get_cache_service().invalidate(pk)
 
     
     @extend_schema(
@@ -233,7 +251,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 obj.save()
             
 
-            self._invalidate_document_cache(pk)
+            # self._invalidate_document_cache(pk)
+            self.get_cache_service().invalidate(pk)
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response({"detail": "No file found."}, status=400)
     
@@ -260,6 +279,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 obj.save()
             
 
-            self._invalidate_document_cache(pk)
+            # self._invalidate_document_cache(pk)
+            self.get_cache_service().invalidate(pk)
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response({"detail": "No image found."}, status=400)
