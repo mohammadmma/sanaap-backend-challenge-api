@@ -1,8 +1,5 @@
 import base64
 import logging
-
-# from django.conf import settings
-# from django.core.cache import cache
 from rest_framework import viewsets, parsers, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -65,29 +62,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return self._cache_service
 
 
-    # def _get_detail_cache_key(self, pk):
-    #     return f"document_detail_{pk}"
-
-    # def _get_list_cache_pattern(self):
-        
-    #     return "document_list_*"
-
-    # def _invalidate_document_cache(self, pk=None):
-    #     """Clears detail cache for a specific PK and sweeps all list caches."""
-    #     keys_to_delete = []
-    #     if pk:
-    #         keys_to_delete.append(CacheKeyService.generate_detail_cache_key(pk))
-        
-        
-    #     list_keys = cache.keys(CacheKeyService.generate_list_cache_key())
-    #     if list_keys:
-    #         keys_to_delete.extend(list_keys)
-            
-    #     if keys_to_delete:
-    #         cache.delete_many(keys_to_delete)
-
-
-
     @extend_schema(
     tags=["Documents"],
     summary="Retrieve document",
@@ -97,8 +71,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def retrieve(self, request, *args, **kwargs):
         """Cache the detail view of a document."""
         pk = kwargs.get('pk')
-        # cache_key = CacheKeyService.generate_detail_cache_key(pk)
-        # cached_data = cache.get(cache_key)
         cache_service = self.get_cache_service()
         cached_data = cache_service.get_detail(pk)
 
@@ -107,7 +79,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
 
         response = super().retrieve(request, *args, **kwargs)
-        # cache.set(cache_key, response.data, timeout=getattr(settings, 'DOCUMENT_CACHE_TTL', 2700))
         cache_service.set_detail(pk, response.data)
         return response
 
@@ -139,11 +110,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         """Cache the list view, accounting for query params (filters/pages)."""
 
-        # query_string = request.META.get('QUERY_STRING', '')
-        # # query_string = request.query_params.dict().items()
-        # print(f"^^^^^^^^^^^^^^^^^^{query_string}")
-
-        # cache_key = CacheKeyService.generate_list_cache_key(request)
         cache_service = self.get_cache_service()
         cached_data = cache_service.get_list(request)
 
@@ -174,20 +140,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
         return payload
 
 
-    # def perform_create(self, serializer):
-    #     serializer.save(uploaded_by=self.request.user)
-    #     # self._invalidate_document_cache()
-    #     self.get_cache_service().invalidate()
-
-    # def perform_update(self, serializer):
-    #     instance = serializer.save()
-    #     # self._invalidate_document_cache(instance.pk)
-    #     self.get_cache_service().invalidate(instance.pk)
-
     def perform_destroy(self, instance):
         pk = instance.pk
         instance.delete()
-        # self._invalidate_document_cache(pk)
         self.get_cache_service().invalidate(pk)
 
     
@@ -208,11 +163,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
     )
     def create(self, request, *args, **kwargs):
         files_payload = self._extract_files_payload(request)
-
-        # Strip file fields so the write serializer never sees them
-        # data = request.data.copy()
-        # data.pop('file', None)
-        # data.pop('image', None)
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -251,9 +201,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
         instance      = self.get_object()
         files_payload = self._extract_files_payload(request)
 
-        # data = request.data.copy()
-        # data.pop('file', None)
-        # data.pop('image', None)
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
@@ -340,7 +287,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 obj.save()
             
 
-            # self._invalidate_document_cache(pk)
             self.get_cache_service().invalidate(pk)
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response({"detail": "No file found."}, status=400)
@@ -359,7 +305,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
             400: OpenApiResponse(description="No image found")
         }
     )
-    @action(detail=True, methods=['post'], url_path='clear_image')
+    @action(detail=True, methods=['post'], url_path='clear-image')
     def clear_image(self, request, pk=None):
         obj = self.get_object()
         if obj.image:
@@ -368,7 +314,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 obj.save()
             
 
-            # self._invalidate_document_cache(pk)
             self.get_cache_service().invalidate(pk)
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response({"detail": "No image found."}, status=400)

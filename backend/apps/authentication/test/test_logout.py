@@ -21,7 +21,6 @@ class LogoutTestCase(APITestCase):
     def test_unauthorized_user_error_403(self):
         response = self.client.post(self.logout_url)
 
-        # print(f"###############{type(response.data['detail'].code)}")
 
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -37,9 +36,7 @@ class LogoutTestCase(APITestCase):
         self.client.post(self.login_url, valid_user)
 
         session_key = self.client.cookies[settings.SESSION_COOKIE_NAME].value
-        # print(f"session key -----------------> {session_key}")
     
-        # Check if this key exists in the DB
         session_exists = Session.objects.filter(session_key=session_key).exists()
         self.assertTrue(session_exists)
 

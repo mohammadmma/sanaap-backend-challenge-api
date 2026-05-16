@@ -36,7 +36,6 @@ class ReadDocumentTestCase(APITestCase):
 
     def test_unauthenticated_user_dont_have_access_error_403(self):
         response = self.client.get(self.list_url)
-        # print(f'########################{response.data}, #############{response.status_code}')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch('django.core.cache.cache.get')
@@ -47,25 +46,19 @@ class ReadDocumentTestCase(APITestCase):
         mock_get.return_value = None
         
         response = self.client.get(self.doc_admin_detail_url)
-        # print(f"^^^^^^^^^^^ {response.data}")
         
-        # Verify it tried to SAVE to cache because it was a miss
         self.assertTrue(mock_set.called)
         self.assertEqual(response.status_code, 200)
 
     def test_update_invalidates_cache(self):
         self.client.force_authenticate(user=self.editor_user)
         
-        # Manually set a "fake" cache
         cache_key = CacheKeyService.generate_detail_cache_key(self.doc_editor.pk)
-        # print(f'$$$$$$$$$$$$$$$$ {cache_key}')
         cache.set(cache_key, {'title': 'Cached Title'})
 
         response = self.client.patch(self.doc_editor_detail_url, {'title': 'Database Title'})
-        # print(f"^^^^^^666 {response.status_code}")
         
 
-        # Verify cache is now EMPTY for this record
         self.assertIsNone(cache.get(cache_key))
     
     def test_list_caching(self):
@@ -75,7 +68,6 @@ class ReadDocumentTestCase(APITestCase):
         }
         response = self.client.get(self.list_url, query_params=query_params)
         request = response.renderer_context['request']
-        # print(f"magiiiiiiiiiiiiiiiiiiiiiic ----> {request}")
         cache_key = CacheKeyService.generate_list_cache_key(request)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -89,8 +81,6 @@ class ReadDocumentTestCase(APITestCase):
         response = self.client.get(self.doc_admin_detail_url)
         file_path = response.data['file_url']
 
-        # print(f"666666666666666666666 {file_path}")
-        # print(f"%%%%%%%%%%%%%%%%%%%%5 {self.doc_admin.file.url}")
         self.assertEqual(file_path, self.doc_admin.file.url)
 
 

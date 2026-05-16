@@ -31,10 +31,8 @@ class AdminDemandTestCase(APITestCase):
 
         created_user = User.objects.get(username=self.new_user.username)
 
-        # 3. Check if the 'viewer' group is linked to this user
         self.assertTrue(created_user.groups.filter(name='viewer').exists())
         
-        # 4. Optional: check the count to ensure they ONLY have one group
         self.assertEqual(created_user.groups.count(), 1)
 
         request_exists = AdminRequestModel.objects.filter(
@@ -50,7 +48,6 @@ class AdminDemandTestCase(APITestCase):
             'password_confirmation': self.new_user.raw_password,
         }
         response = self.client.post(self.demand_url, register_dict)
-        # print(f"%%%%%%%%%%%%% {response.data['username'][0]}")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data['username'][0], 'This username is already taken.')

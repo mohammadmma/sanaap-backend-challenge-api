@@ -30,15 +30,11 @@ class UserRegisterTestCase(APITestCase):
             'password': 'test_Pass',
             'password_confirmation': 'test_Pass',
         }
-        # Make request
         response = self.client.post(self.signup_url, signup_dict)
-        # Check status response
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(User.objects.count(), 2)
-        # Check database
         new_user = User.objects.get(username=self.user_object.username)
         new_user_groups = new_user.groups.values().first()
-        # print(f"group of the new created user --> {new_user_groups}")
         self.assertEqual(
             new_user.username,
             self.user_object.username,
@@ -52,6 +48,5 @@ class UserRegisterTestCase(APITestCase):
         }
         response = self.client.post(self.signup_url, register_dict)
         response_msg = response.data['username'][0]
-        # print(f"this is msg --> {type(response_msg)}")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(str(response_msg), 'This username is already taken.')

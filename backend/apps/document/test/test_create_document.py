@@ -47,7 +47,6 @@ class CreateDocumentTestCase(APITestCase):
         response = self.client.post(self.list_url, create_dict)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        # print(f"^^^^^^^^^^^^^ {self.new_doc.uploaded_by}")
 
     def test_create_new_doc_invalidate_cache(self):
         self.client.force_authenticate(user=self.editor_user)
@@ -66,11 +65,8 @@ class CreateDocumentTestCase(APITestCase):
         create_dict = {
             'title': self.new_doc.title,
             'description': self.new_doc.description,
-            # 'file': self.new_doc.file,
-            # 'image': self.new_doc.image
         }
         response = self.client.post(self.list_url, create_dict)
-        # print(f"^^^^^^^^^^^^^^^^^ {response.data}")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         document = Document.objects.get(title=self.new_doc.title)
